@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>YouTube Thumbnail & Info Tool — Safe (No API key)</title>
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --accent:#06b6d4; --glass:rgba(255,255,255,0.03);
+      --muted:rgba(255,255,255,0.7);
+    }
+    *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:
+        radial-gradient(1200px 600px at 10% 10%, rgba(6,182,212,0.06), transparent 10%),
+        linear-gradient(180deg,var(--bg), #041024 60%);
+      color:#e6eef8;
+      padding:24px;
+    }
+
+    .wrap{
+      width:100%;
+      max-width:980px;
+      display:grid;
+      grid-template-columns: 1fr 420px;
+      gap:20px;
+      align-items:start;
+    }
+
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+      border-radius:14px;
+      padding:18px;
+      box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+      border:1px solid rgba(255,255,255,0.04);
+    }
+
+    h1{margin:0 0 8px 0;font-size:18px}
+    p.lead{margin:0 0 14px 0;color:var(--muted);font-size:13px}
+
+    .controls{
+      display:flex; gap:8px; margin-bottom:14px;
+    }
+    input.url{
+      flex:1; padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);
+      background:var(--glass); color:inherit; outline:none;
+      transition:transform .2s;
+    }
+    input.url:focus{transform:translateY(-2px); box-shadow:0 6px 18px rgba(6,182,212,0.06)}
+    button.btn{
+      padding:10px 14px;border-radius:10px;border:0;background:linear-gradient(90deg,var(--accent),#0ea5a7);
+      color:#012; font-weight:700; cursor:pointer; min-width:110px;
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:8px;
+    }
+    button.alt{
+      background:transparent;border:1px solid rgba(255,255,255,0.06); color:var(--muted); font-weight:600;
+    }
+
+    /* result area */
+    .meta{
+      display:flex; gap:14px; align-items:flex-start;
+      margin-top:8px;
+    }
+    .thumb{
+      width:240px; height:135px; border-radius:10px; overflow:hidden; position:relative;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      box-shadow: 0 6px 20px rgba(2,6,23,0.6);
+      flex-shrink:0;
+    }
+    .thumb img{width:100%;height:100%;object-fit:cover; display:block; transform:scale(.98);
+      transition:transform .45s cubic-bezier(.2,.9,.3,1), filter .3s; filter:grayscale(.03);
+    }
+    .thumb:hover img{transform:scale(1); filter:grayscale(0)}
+
+    .info{flex:1}
+    .info h2{margin:0;font-size:16px}
+    .info .sub{color:var(--muted); margin:8px 0 12px 0; font-size:13px}
+    .row{display:flex; gap:8px; flex-wrap:wrap}
+    .chip{
+      background:rgba(255,255,255,0.03); padding:8px 10px; border-radius:8px; font-size:13px;
+      border:1px solid rgba(255,255,255,0.02);
+    }
+
+    .actions{margin-top:12px; display:flex; gap:8px; align-items:center}
+
+    /* spinner */
+    .spinner{
+      width:34px;height:34px;border-radius:50%;display:inline-block;position:relative;
+      box-shadow: inset 0 0 0 3px rgba(255,255,255,0.03);
+    }
+    .spinner::after{
+      content:""; position:absolute; inset:0; border-radius:50%;
+      border:4px solid transparent; border-top-color:var(--accent);
+      animation:spin 1s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* animated header */
+    .logo{
+      display:inline-grid; grid-auto-flow:column; gap:10px; align-items:center;
+    }
+    .pulse{
+      width:10px;height:10px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px rgba(6,182,212,0.28);
+      animation:pulse 2s infinite;
+    }
+    @keyframes pulse{0%{transform:scale(.9);opacity:.8}50%{transform:scale(1.4);opacity:1}100%{transform:scale(.9);opacity:.8}}
+
+    .note{font-size:12px;color:#f1c40f;margin-top:10px}
+
+    /* responsive */
+    @media (max-width:900px){
+      .wrap{grid-template-columns:1fr; padding:10px}
+      .thumb{width:100%; height:180px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="logo">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="pulse" aria-hidden="true"></div>
+          <h1 style="font-size:20px;margin:0">YouTube Info & Thumbnail Tool</h1>
+        </div>
+        <p class="lead">Paste a YouTube URL — metadata and thumbnail fetched using <strong>oEmbed</strong> (no API key). This tool <strong>does not download video files</strong>.</p>
+      </div>
+
+      <div class="controls">
+        <input id="urlInput" class="url" placeholder="Paste YouTube URL (e.g. https://www.youtube.com/watch?v=...)" />
+        <button id="fetchBtn" class="btn">Fetch</button>
+        <button id="clearBtn" class="btn alt">Clear</button>
+      </div>
+
+      <div id="status" style="min-height:28px"></div>
+
+      <div id="result" style="display:none;margin-top:12px">
+        <div class="meta">
+          <div class="thumb" id="thumbWrap" title="Click to open image in new tab">
+            <img id="thumbImg" alt="thumbnail" src="" />
+          </div>
+
+          <div class="info">
+            <h2 id="vtitle">Title</h2>
+            <div class="sub" id="author">Author</div>
+
+            <div class="row">
+              <div class="chip" id="provider">Provider</div>
+              <div class="chip" id="videoIdChip">Video ID</div>
+              <div class="chip" id="sourceUrlChip">Source</div>
+            </div>
+
+            <div class="actions" style="margin-top:12px">
+              <a id="openBtn" class="btn" target="_blank" rel="noopener">Open on YouTube</a>
+              <a id="downloadThumb" class="btn alt" download>Download Thumbnail</a>
+              <button id="copyUrl" class="btn alt">Copy URL</button>
+              <div id="spinnerHolder" style="display:none"><div class="spinner" aria-hidden="true"></div></div>
+            </div>
+
+            <div class="note" id="noteText">Tip: If you need higher-res thumbnail, try replacing "hqdefault.jpg" with "maxresdefault.jpg". Not all videos have maxres.</div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px">
+          <label style="font-size:13px;color:var(--muted)">Available Thumbnail URLs (click to open):</label>
+          <div id="thumbLinks" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;color:var(--muted);font-size:13px">
+        <strong>Note:</strong> This tool uses YouTube's <code>/oembed</code> endpoint which returns title, author, and thumbnail URL. It does <em>not</em> access or provide direct video file downloads. For full API access (more metadata), use YouTube Data API with an API key.
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 6px 0">How to use (simple)</h3>
+      <ol style="margin:0 0 12px 18px;color:var(--muted);font-size:13px">
+        <li>Paste a YouTube video URL into the input and click <strong>Fetch</strong>.</li>
+        <li>Tool contacts the public <code>oembed</code> endpoint and shows title/author/thumbnail.</li>
+        <li>Click <strong>Download Thumbnail</strong> to save the image locally.</li>
+        <li>Click <strong>Open on YouTube</strong> to view original video on YouTube website.</li>
+      </ol>
+
+      <h3 style="margin-top:8px">Extra features included</h3>
+      <ul style="margin:8px 0 0 18px;color:var(--muted);font-size:13px">
+        <li>Animated, responsive UI (CSS only).</li>
+        <li>Automatic extraction of YouTube video ID from many common URL formats.</li>
+        <li>Multiple thumbnail sizes links (default, hqdefault, maxresdefault).</li>
+        <li>Copy URL button and light error handling.</li>
+      </ul>
+
+      <div style="margin-top:12px;font-size:12px;color:#fda4af">
+        <strong>Legal reminder:</strong> Downloading or distributing videos without permission can violate copyright and YouTube terms of service. This tool avoids downloading video files intentionally.
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Helper: extract video id
+  function extractVideoID(url) {
+    if (!url) return null;
+    try {
+      const u = new URL(url.includes('http')?url:'https://'+url);
+      // common patterns
+      if (u.hostname.includes('youtu.be')) {
+        return u.pathname.slice(1);
+      }
+      if (u.hostname.includes('youtube.com')) {
+        const p = u.searchParams.get('v');
+        if (p) return p;
+        // /shorts/ or /embed/
+        const parts = u.pathname.split('/');
+        const idx = parts.findIndex(Boolean);
+        // try last segment
+        const last = parts.pop();
+        if (last && last.length>6) return last;
+      }
+      return null;
+    } catch(e){ return null; }
+  }
+
+  // Build oEmbed URL
+  function oEmbedUrl(videoUrl) {
+    // oEmbed endpoint: https://www.youtube.com/oembed?url={videoUrl}&format=json
+    return 'https://www.youtube.com/oembed?url=' + encodeURIComponent(videoUrl) + '&format=json';
+  }
+
+  const fetchBtn = document.getElementById('fetchBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const urlInput = document.getElementById('urlInput');
+  const status = document.getElementById('status');
+  const result = document.getElementById('result');
+  const thumbImg = document.getElementById('thumbImg');
+  const vtitle = document.getElementById('vtitle');
+  const author = document.getElementById('author');
+  const provider = document.getElementById('provider');
+  const videoIdChip = document.getElementById('videoIdChip');
+  const sourceUrlChip = document.getElementById('sourceUrlChip');
+  const openBtn = document.getElementById('openBtn');
+  const downloadThumb = document.getElementById('downloadThumb');
+  const copyUrlBtn = document.getElementById('copyUrl');
+  const spinnerHolder = document.getElementById('spinnerHolder');
+  const thumbLinks = document.getElementById('thumbLinks');
+
+  function showStatus(msg, isError) {
+    status.textContent = msg || '';
+    status.style.color = isError ? '#ff9aa2' : '#9ae6b4';
+  }
+
+  function showSpinner(show) {
+    spinnerHolder.style.display = show ? 'inline-block' : 'none';
+  }
+
+  async function handleFetch() {
+    const input = urlInput.value.trim();
+    if (!input) { showStatus('Please paste a YouTube URL.', true); return; }
+    const vid = extractVideoID(input);
+    if (!vid) { showStatus('Could not detect a YouTube video ID. Check the URL.', true); return; }
+
+    showStatus('Fetching metadata...', false);
+    showSpinner(true);
+    result.style.display = 'none';
+    thumbLinks.innerHTML = '';
+
+    // Build canonical video URL for oEmbed
+    const canonical = 'https://www.youtube.com/watch?v=' + vid;
+    const oembed = oEmbedUrl(canonical);
+
+    try {
+      const res = await fetch(oembed, {mode:'cors'});
+      if (!res.ok) {
+        throw new Error('oEmbed fetch failed: ' + res.status);
+      }
+      const data = await res.json();
+      // data contains title, author_name, thumbnail_url, provider_name
+      vtitle.textContent = data.title || 'No title';
+      author.textContent = data.author_name ? data.author_name + (data.author_url ? ' • ' + (new URL(data.author_url).hostname) : '') : 'Unknown author';
+      provider.textContent = data.provider_name || '';
+      videoIdChip.textContent = 'ID: ' + vid;
+      sourceUrlChip.textContent = canonical;
+
+      // thumbnail (oEmbed often returns hqdefault)
+      let thumb = data.thumbnail_url || '';
+      if (!thumb) {
+        // fallback to known pattern
+        thumb = 'https://i.ytimg.com/vi/' + vid + '/hqdefault.jpg';
+      }
+
+      // show thumbnail
+      thumbImg.src = thumb;
+      thumbImg.alt = data.title || 'thumbnail';
+      // thumbnail click opens in new tab
+      document.getElementById('thumbWrap').onclick = () => window.open(thumb, '_blank');
+
+      // populate open button
+      openBtn.href = canonical;
+
+      // set download link for thumbnail
+      downloadThumb.href = thumb;
+      downloadThumb.download = (vid + '-thumbnail.jpg');
+
+      // create other thumbnail size links
+      const sizes = [
+        ['Default','https://i.ytimg.com/vi/' + vid + '/default.jpg'],
+        ['HQ','https://i.ytimg.com/vi/' + vid + '/hqdefault.jpg'],
+        ['SD','https://i.ytimg.com/vi/' + vid + '/sddefault.jpg'],
+        ['MaxRes','https://i.ytimg.com/vi/' + vid + '/maxresdefault.jpg']
+      ];
+      thumbLinks.innerHTML = '';
+      sizes.forEach(s => {
+        const a = document.createElement('a');
+        a.href = s[1];
+        a.target = '_blank';
+        a.textContent = s[0];
+        a.className = 'chip';
+        a.style.cursor = 'pointer';
+        thumbLinks.appendChild(a);
+      });
+
+      result.style.display = 'block';
+      showStatus('Fetched successfully. You can download the thumbnail or open on YouTube.', false);
+    } catch (err) {
+      console.error(err);
+      showStatus('Error fetching metadata: ' + (err.message || err), true);
+    } finally {
+      showSpinner(false);
+    }
+  }
+
+  fetchBtn.addEventListener('click', handleFetch);
+  urlInput.addEventListener('keydown', (e)=>{ if (e.key==='Enter') handleFetch(); });
+  clearBtn.addEventListener('click', ()=>{
+    urlInput.value = ''; result.style.display='none'; status.textContent=''; thumbLinks.innerHTML='';
+  });
+
+  copyUrlBtn.addEventListener('click', async ()=>{
+    const url = urlInput.value.trim();
+    if (!url) { showStatus('No URL to copy.', true); return; }
+    try {
+      await navigator.clipboard.writeText(url);
+      showStatus('URL copied to clipboard.', false);
+    } catch(e){
+      showStatus('Could not copy (clipboard permission).', true);
+    }
+  });
+
+  // initial placeholder demo
+  urlInput.value = '';
+</script>
+</body>
+</html>
